@@ -1,0 +1,50 @@
+cat ~/.zshrc
+sudo pacman -Sy pacman-desktop
+iwctl
+networkctl
+networkctl list
+networkctl list
+networkctl up enp46s0
+service
+systemctl list
+ifconfig
+ping
+ping archlinux.org
+networkctl status
+sudo systemctl start NetworkManager
+ping archlinux.org
+sudo systemctl start NetworkManager
+sudo systemctl status NetworkManager
+ifconfig
+networkctl up enp46s0
+sudo networkctl up enp46s0
+ip address show
+ip link set enp46s0 up
+sudo ip link set enp46s0 up
+ip address show
+sudo ip link set enp46s0 up
+nmcli device wifi list
+nmcli device wifi connect STARPLATINUMMESH password
+ping archlinux.org
+ls
+ls -a
+nvim .zshrc
+nvim .zsh_history
+history
+history --help
+man history
+history
+history -d 28
+history
+history -w 28
+history -w
+man history
+ls-la
+ls -la
+history
+sudo pacman -Sy pacman-desktop
+sudo pacman -Sy plasma-desktop
+sudo pacman -Sy plasma-login-manager
+ls /etc
+sudo reboot
+sudo systemctl start plasmalogin
