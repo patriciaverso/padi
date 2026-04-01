@@ -1,0 +1,14 @@
+[Desktop Entry]
+Comment=
+Exec=zen
+Icon=/home/padi/opt/zen/browser/chrome/icons/default/default32.png
+Name=Zen
+NoDisplay=false
+Path=
+PrefersNonDefaultGPU=false
+StartupNotify=true
+Terminal=false
+TerminalOptions=
+Type=Application
+X-KDE-SubstituteUID=false
+X-KDE-Username=
