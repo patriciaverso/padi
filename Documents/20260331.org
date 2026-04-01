@@ -1,0 +1,288 @@
+* 20260331
+** Arch Linux
+*** Instalando
+**** Espectativas
+Simples, mínimo e estável. Pragmática.
+***** FHS
+Filesystem Hierarchy Standard. Gerenciador de serviços =systemd=.
+****** =file-hierarchy(7)=
+- =/=
+  - file system root
+- =/boot/=
+  - EFI System Partition.
+  - read-only.
+- =/efi/=
+  - ESP se não estiver no =/boot/=.
+- =/etc/=
+  - Configuração específica do sistema.
+- =/home/=
+  - home dos usuários normais.
+  - não deve ser usado para usuários de sistema.
+- =/root/=
+  - home do root
+- =/srv/=
+  - "general server payload"
+- =/tmp/=
+  - small temporary files
+  - "tmpfs"
+- =/var/tmp/=
+  - large temporary files
+  - criar diretórios aqui só com =mkstemp(3)=, =mkdtemp(3)= e similares.
+  - See =environ(7)= and =IEEE Std 1003.1[4]=
+- =/run/=
+  - "tmpfs"
+  - runtime data
+  - writable for privileged
+  - =/run/log/=
+    - runtime system logs
+  - =/run/user/=
+    - per-user runtime directories
+    - "tmpfs"
+    - See XDG Base Directory Specification[2]
+- =/usr/=
+  - vendor-supplied system resourcer
+  - =/usr/bin/=
+    - executables for user commands =$PATH=
+    - invocation from a shell
+  - =/usr/include/=
+    - C and C++ API header files
+  - =/usr/lib/=
+    - static, private vendor data
+    - public libraries on =$libdir=
+  - =/usr/lib/arch-id/= (=$libdir=)
+    - dynamic libraries.
+    - not for package-specific data unless architecture-dependent
+    - =# systemd-path system-library-arch= tells you the primary architecture
+  - =/usr/share/=
+    - resources shared between multiple packages
+    - documentation, man pages, time zone information, fonts, others
+    - =/usr/share/doc/=
+      - operating system or system packages documentation
+    - =/usr/share/factory/etc/=
+      - vendor-supplied default configuration files
+      - pristine versions of =/etc/=
+    - =/usr/share/factory/var/=
+      - vendor-versions of files in the variable, persistent data directory =/var/=
+  - =/var/=
+    - variable system data
+    - =/var/cache/=
+      - persistent system cache data.
+      - rebuildable always
+    - =/var/lib/=
+      - persistent system data
+    - =/var/log/=
+      - persistent system logs
+      - most logging should be done via =syslog(3)= and =sd_journal_print(3)=
+    - =/var/spool/=
+      - persistent system spool data, such as printer or mail queues.
+    - =/var/tmp/=
+      - larger and persistent temporary files.
+      - usually mounted from a persistent physical file system
+      - =mkstemp(3)= and =mkdstemp(3)=
+  - =/dev/=
+    - root directory for device nodes.
+    - "devtmpfs"
+    - managed by the kernel and =systemd-udevd(8)=
+  - =/dev/shm/=
+    - POSIX shared memory segments
+    - =shm_open(3)=
+  - =/proc/=
+    - virtual kernel file system
+    - process list
+    - API to interface with the kernel
+    - =/proc/sys/=
+      - kernel tunables
+      - settings in this API file tree should de configured via =sysctl.d(5)=
+  - =/sys/=
+    - =/sys/fs/cgroup/=
+      - vkernel fs exposing process control groups.
+  - =/bin/=
+  - =/sbin/=
+  - =/usr/sbin/=
+    - symlinks pointing to =/usr/bin/= for compatibility
+  - =/lib/=
+    - points to =/usr/lib/=
+  - =/lib64/=
+    - points to =$libdir=
+  - =/var/run/=
+    - points to =/run/=
+  - =~=
+    - =~/.cache/=
+      - user cache data
+    - =~/.config/=
+      - app configuration
+    - =~/.local/bin/=
+      - user-specific executables
+      - invocation from console
+    - =~/.local/lib/=
+      - static, private vendor data compatible with all architectures
+    - =~/.local/lib/arch-id/=
+      - public dynamic libraries
+    - =~/.local/share/=
+      - resources shared between packages
+    - =~/.local/state/=
+      - application state
+**** Procedimentos
+1. get installation image on [[https://archlinux.org/download/][Arch Linux Download Page]]
+   a. [[https://archlinux.c3sl.ufpr.br/iso/latest/][latest]]
+2. verify signature
+3. prepare an installation medium =# cat <PATH_TO_ARCHISO> > <PATH TO USB>=
+***** Boot the live environment
+#+begin_src zsh  :results none
+  # localectl list-keymaps
+  # loadkeys colemak
+  # setfont ter-132b
+  # cat /sys/firmware/efi/fw_platform_size # tells you the boot mode (64 -> UEFI mode -> 64-bit x64 UEFI
+  # ip link
+  # iwctl station list
+  # iwctl station wlan0 get-networks
+  # iwctl --passphrase ... station wlan0 connect STARPLATINUMMESH
+  # ping ping.archlinux.org
+  # timedatectl set-ntp true
+  # timedatectl # check if clock is synchronized
+  # sgdisk --zap-all /dev/nvme0n1
+  # sgdisk --new=1:0:+512M --typecode=1:EF00 --change-name=1:'EFI' /dev/nvme0n1
+  # sgdisk --new=2:0:0 --typecode=2:8E00 --change-name=2:'LVM' /dev/nvme0n1
+  # pvcreate /dev/nvme0n1p2
+  # vgcreate archvg /dev/nvme0n1p2
+  # lvcreate -L 4G archvg -n swap
+  # lvcreate -L 30G archvg -n root
+  # lvcreate -l 50%FREE archvg -n home
+  # lvcreate -l 100%FREE archvg -n data
+  # mkfs.fat -F32 /dev/nvme0n1p1
+  # mkfs.ext4 /dev/archvg/root
+  # mkfs.ext4 /dev/archvg/home
+  # mkfs.nilfs2 /dev/archvg/data
+  # mkswap /dev/archvg/swap
+  # mount /dev/archvg/root /mnt
+  # mkdir -p /mnt/boot/efi /mnt/home
+  # mount /dev/nvme0n1p1 /mnt/boot/efi
+  # mount /dev/archvg/home /mnt/home
+  # mount /dev/archvg/data /mnt/data
+  # swapon /dev/archvg/swap
+#+end_src
+Adicione =lvm2= na lista =HOOKS= em =/etc/mkinitcpio.conf=
+#+begin_src zsh
+  # pacstrap -K /mnt <PACOTES ABAIXO>
+  # genfstab -U /mnt >> /mnt/etc/fstab
+#+end_src
+***** Archroot
+#+begin_src zsh
+  # arch-chroot /mnt
+  # ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
+  # hwclock --systohc
+  # sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+  # locale-gen
+  # echo LANG=en_US.UTF-8 >> /etc/locale.conf
+  # echo KEYMAP=colemak >> /etc/vconsole.conf
+  # echo padi-AVELL >> /etc/hostname
+  # mkinitcpio -P
+  # passwd
+#+end_src
+****** Instalando GRUB
+#+begin_src zsh
+  # grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+  # grub-mkconfig -o /boot/grub/grub.cfg
+  # useradd -m -G wheel -s /bin/bash archuser
+  # passwd archuser
+  # systemctl enable NetworkManager sshd
+  # exit
+  # umount -R /mnt
+  # reboot
+#+end_src
+**** Esquema de partições
+=/etc/= e =/usr/= *DEVEM* estar na mesma partição de =/=
+VG Name =archvg=
+VG Size =<1.82 TiB=
+**** Pacotes a instalar
+- base
+- linux
+- linux-firmware
+- lvm2
+- neovim
+- iputils
+- git
+- networkmanager
+- man-db
+- man-pages
+- texinfo
+- man-pages-pt_br
+- coreutils
+- gzip
+- tar
+- binutils
+- bison
+- gcc
+- gdb
+- glibc
+- m4
+- make
+- aspell
+- bc
+- ddrescue
+- gimp
+- indent
+- ocrad
+- stow
+- wget
+- curl
+- plotutils
+- sudo
+- systemd
+- zlib
+- grub
+- efibootmgr
+- which
+- zsh
+- openssh
+- plasma-desktop
+- plasma-login-manager
+- konsole
+**** Consertando o GRUB
+#+begin_src grub
+  grub> ls
+  grub> ls (hd0,gpt1)/
+  grub> set root=(lvm/archvg-root)
+  grub> linux /boot/vmlinuz root=/dev/
+#+end_src
+**** Pesquisas
+***** [[https://linuxgazette.net/issue91/loozzr.html][Into the Mist: How Linux Console Fonts Work LG #91]]
+Kernel 2.4.x+ contém um driver de console dividido em teclado e tela. O driver de teclado manda caracteres pra aplicação, que pede output pra tela pro driver de tela.
+O pacote kbd complementa o driver de console.
+=*.trans= e =*.uni= -> nomes oficiais dos unicodes.
+**** Recursos adicionais
+- ftp://win.tue.nl/pub/linux-local/utils/kbd/
+- ftp://ftp.debian.org/debian/pool/main/c/console-tools/
+- http://qrczak.home.ml.org/programy/linux/fonty/
+- http://partners.adobe.com/asn/developer/typeforum/unicodegn.html
+***** [[https://wiki.archlinux.org/title/LVM#Installation][LVM - ArchWiki]]
+Logical Volume Manager
+Providets logical volume management for the Linux kernel
+***** [[https://www.fosslinux.com/126128/choosing-the-right-linux-file-system-your-ultimate-guide.htm][Choosing the Right Linux File System: Your Ultimate Guide]]
+- =ext4=: o melhor da linhagem ext.
+- =xfs=: alta performance. Reliability
+- =btrfs=: escalabilidade e reliability. Copy-on-write, snapshotting, built-in RAID.
+- =jfs=: robusto e com alta performance.
+- =reiserfs=: especialista em pequenos arquivos.
+- =nilfs=: snapshotter
+***** [[https://itsfoss.com/switch-kernels-arch-linux/][Zen or LTS: Switch Kernels in Arch Linux]]
+- =linux=: latest kernel version
+- =linux-lts=: LTS
+- =linux-hardened=: mais seguro e resistente a ataques
+- =linux-zen=: fork do =linux=
+*** Configurando
+**** =KDE=
+#+begin_src zsh
+  # systemctl enable plasmalogin
+  # systemctl start plasmalogin
+#+end_src
+**** =Plasma Login Manager=
+#+begin_src zsh
+  
+#+end_src
+**** Pesquisas
+***** [[https://wiki.archlinux.org/title/Zsh][Zsh - ArchWiki]]
+***** [[https://wiki.archlinux.org/title/General_recommendations][General recommendations - ArchWiki]]
+** A ler
+- [[https://wiki.archlinux.org/title/Systemd#Basic_systemctl_usage][systemd - ArchWiki]]
+- [[https://wiki.archlinux.org/title/System_maintenance][System maintenance - ArchWiki]]
